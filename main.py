@@ -1,3 +1,4 @@
+
 from dataclasses import dataclass
 from drafter import *
 
@@ -101,6 +102,43 @@ HARD_TASK_KEYWORDS: list[str] = [
     "vlookup", "vba", "architecture", "optimize", "algorithm", "recursion",
     "from scratch", "step-by-step", "regression",
 ]
+
+
+# ==============================================================================
+# DOCUMENTATION OF ADVANCED PROGRAMMING TECHNIQUES
+# ==============================================================================
+
+# This application uses several programming techniques beyond basic
+# sequential code:
+#
+# 1. DATACLASSES:
+#    ModelProfile, EvaluationRecord, and State use Python dataclasses to
+#    organize related information into structured objects. This makes it
+#    easier to store and access the application's data.
+#
+# 2. LISTS OF OBJECTS:
+#    The models and evaluations fields in State are lists containing
+#    dataclass instances. This allows the application to manage multiple
+#    models and user-submitted evaluations.
+#
+# 3. TYPE HINTS:
+#    Functions and dataclass fields use type hints such as str, int, bool,
+#    list[str], and list[ModelProfile]. These communicate the expected
+#    data types and make the code easier to understand.
+#
+# 4. HELPER FUNCTION DECOMPOSITION:
+#    The application separates tasks into smaller functions for keyword
+#    detection, complexity analysis, scoring, ranking, table creation,
+#    and page rendering. This avoids repeating the same logic.
+#
+# 5. ALGORITHMIC RANKING:
+#    The application calculates a score for each model, then uses loops
+#    and comparisons to identify the five highest-scoring models.
+#
+# 6. STATE-BASED WEB APPLICATION:
+#    Drafter routes receive and update a shared State object. This allows
+#    user input, recommendations, and evaluation records to be maintained
+#    as the user navigates between pages.
 
 
 # ==============================================================================
@@ -396,7 +434,7 @@ def create_initial_state() -> State:
 
 
 # ==============================================================================
-# KEYWORD & COMPLEXITY HELPER FUNCTIONS (Each returns one simple value)
+# KEYWORD & COMPLEXITY HELPER FUNCTIONS
 # ==============================================================================
 
 def contains_any_keyword(text: str, keywords: list[str]) -> bool:
@@ -577,7 +615,7 @@ def explain_model_score(
     complex_task: bool,
     keyword_category: str,
 ) -> list[str]:
-    """Returns a list of step-by-step strings explaining a model's score."""
+    """Returns a list of step-by-step strings explaining the model's score."""
     steps: list[str] = []
 
     if model.best_category == category:
@@ -713,7 +751,7 @@ def build_explanation(model: ModelProfile, category: str, priority: str) -> str:
 
 
 # ==============================================================================
-# TABLE BUILDER HELPER FUNCTIONS (Builds rows cleanly one list at a time)
+# TABLE BUILDER HELPER FUNCTIONS
 # ==============================================================================
 
 def build_top_five_table(top_models: list[ModelProfile]) -> Table:
@@ -835,7 +873,7 @@ def build_baseline_models_table(models: list[ModelProfile]) -> Table:
 
 
 # ==============================================================================
-# PAGE RENDERING FUNCTIONS (6 Distinct Pages)
+# PAGE RENDERING FUNCTIONS
 # ==============================================================================
 
 def render_home_page(state: State) -> Page:
@@ -1219,6 +1257,298 @@ def clear_evaluations(state: State) -> Page:
     state.evaluations = []
     return render_history_page(state)
 
+
+# ==============================================================================
+# SELF-TESTS: HELPER FUNCTIONS AND ALL EIGHT ROUTES
+# ==============================================================================
+
+def run_self_tests() -> None:
+    """
+    Runs assertions to check initialization, helper functions, and routes.
+
+    These tests use separate temporary State objects. They do not change
+    the actual application state that is passed to start_server().
+    """
+
+    # --------------------------------------------------------------------------
+    # Test initial application data.
+    # --------------------------------------------------------------------------
+
+    test_state: State = create_initial_state()
+
+    assert len(test_state.models) == 20
+    assert len(test_state.evaluations) == 0
+    assert len(CATEGORIES) == 10
+    assert isinstance(test_state.models[0], ModelProfile)
+
+    # --------------------------------------------------------------------------
+    # Test keyword detection.
+    # --------------------------------------------------------------------------
+
+    assert find_keyword_category("I need help with calculus") == (
+        "Mathematics & Statistics"
+    )
+    assert find_matched_keyword("I need help with calculus") == "calculus"
+    assert find_keyword_category("What is the weather?") == ""
+
+    # --------------------------------------------------------------------------
+    # Test complexity detection.
+    # --------------------------------------------------------------------------
+
+    assert is_complex_prompt("Solve this differential equation.")
+    assert not is_complex_prompt("What is a cell?")
+
+    # --------------------------------------------------------------------------
+    # Test access labels.
+    # --------------------------------------------------------------------------
+
+    assert format_access_label(True) == "Free / Open"
+    assert format_access_label(False) == "Paid Tier"
+
+    # --------------------------------------------------------------------------
+    # Test trust verdicts.
+    # --------------------------------------------------------------------------
+
+    assert determine_trust_verdict(5, 5, True) == "High Trust (Verified)"
+    assert determine_trust_verdict(
+        4, 4, False
+    ) == "Moderate Trust (Double-Check Details)"
+    assert determine_trust_verdict(
+        2, 4, True
+    ) == "Low Trust (Needs Revision)"
+
+    # --------------------------------------------------------------------------
+    # Test model scoring with a known example.
+    # --------------------------------------------------------------------------
+
+    test_model: ModelProfile = test_state.models[0]
+    test_score: int = calculate_model_score(
+        test_model,
+        "General / Intro Electives",
+        "Highest Accuracy",
+        False,
+        "",
+    )
+    assert test_score == 42
+
+    # --------------------------------------------------------------------------
+    # Test model-name collection.
+    # --------------------------------------------------------------------------
+
+    test_names: list[str] = get_all_model_names(test_state.models)
+    assert len(test_names) == 20
+    assert test_names[0] == "GPT-4o"
+
+    # --------------------------------------------------------------------------
+    # Test top-five ranking helper.
+    # --------------------------------------------------------------------------
+
+    test_state.models[0].last_score = 50
+    test_state.models[1].last_score = 40
+    test_top_five: list[ModelProfile] = get_top_five_by_score(
+        test_state.models
+    )
+    assert len(test_top_five) == 5
+    assert test_top_five[0].name == "GPT-4o"
+
+    # ==========================================================================
+    # ROUTE TEST 1: index
+    # ==========================================================================
+    # Verify that the home route returns a Page.
+
+    route_state: State = create_initial_state()
+    home_result: Page = index(route_state)
+
+    assert isinstance(home_result, Page)
+
+    # ==========================================================================
+    # ROUTE TEST 2: go_to_input
+    # ==========================================================================
+    # Verify that the input route returns a Page.
+
+    route_state: State = create_initial_state()
+    input_result: Page = go_to_input(route_state)
+
+    assert isinstance(input_result, Page)
+
+    # ==========================================================================
+    # ROUTE TEST 3: go_to_rubric
+    # ==========================================================================
+    # Verify that the rubric route returns a Page.
+
+    route_state: State = create_initial_state()
+    rubric_result: Page = go_to_rubric(route_state)
+
+    assert isinstance(rubric_result, Page)
+
+    # ==========================================================================
+    # ROUTE TEST 4: go_to_history
+    # ==========================================================================
+    # Verify that the history route returns a Page.
+
+    route_state: State = create_initial_state()
+    history_result: Page = go_to_history(route_state)
+
+    assert isinstance(history_result, Page)
+
+    # ==========================================================================
+    # ROUTE TEST 5: go_to_evaluate
+    # ==========================================================================
+    # Verify that the evaluation route returns a Page.
+
+    route_state: State = create_initial_state()
+    evaluate_result: Page = go_to_evaluate(route_state)
+
+    assert isinstance(evaluate_result, Page)
+
+    # ==========================================================================
+    # ROUTE TEST 6: recommend_model
+    # ==========================================================================
+    # Verify that a valid prompt creates a recommendation and updates State.
+
+    route_state: State = create_initial_state()
+
+    recommendation_result: Page = recommend_model(
+        route_state,
+        "Explain the process of photosynthesis in biology.",
+        "Biology & Pre-Med",
+        "Highest Accuracy",
+    )
+
+    assert isinstance(recommendation_result, Page)
+    assert route_state.user_prompt == (
+        "Explain the process of photosynthesis in biology."
+    )
+    assert route_state.selected_category == "Biology & Pre-Med"
+    assert route_state.selected_priority == "Highest Accuracy"
+    assert route_state.recommended_model_name != ""
+    assert route_state.recommendation_reason != ""
+    assert len(route_state.winner_math_steps) > 0
+
+    # Confirm that the winning model's recommendation count increased.
+    winner_found: bool = False
+
+    for model in route_state.models:
+        if model.name == route_state.recommended_model_name:
+            assert model.times_recommended == 1
+            winner_found = True
+
+    assert winner_found
+
+    # Also test the empty-prompt validation branch.
+    empty_prompt_state: State = create_initial_state()
+
+    empty_prompt_result: Page = recommend_model(
+        empty_prompt_state,
+        "",
+        "General / Intro Electives",
+        "Highest Accuracy",
+    )
+
+    assert isinstance(empty_prompt_result, Page)
+    assert empty_prompt_state.recommended_model_name == ""
+    assert empty_prompt_state.user_prompt == ""
+
+    # ==========================================================================
+    # ROUTE TEST 7: submit_evaluation
+    # ==========================================================================
+    # Verify that a valid evaluation is saved in State.
+
+    evaluation_state: State = create_initial_state()
+
+    evaluation_result: Page = submit_evaluation(
+        evaluation_state,
+        "GPT-4o",
+        "General / Intro Electives",
+        "Explain photosynthesis.",
+        "Photosynthesis converts light energy into chemical energy.",
+        "5",
+        "5",
+        True,
+    )
+
+    assert isinstance(evaluation_result, Page)
+    assert len(evaluation_state.evaluations) == 1
+
+    saved_record: EvaluationRecord = evaluation_state.evaluations[0]
+
+    assert saved_record.model_name == "GPT-4o"
+    assert saved_record.category == "General / Intro Electives"
+    assert saved_record.prompt_tested == "Explain photosynthesis."
+    assert saved_record.response_snippet != ""
+    assert saved_record.accuracy_score == 5
+    assert saved_record.clarity_score == 5
+    assert saved_record.fact_checked
+    assert saved_record.trust_label == "High Trust (Verified)"
+
+    # Also test the missing-information validation branch.
+    invalid_evaluation_state: State = create_initial_state()
+
+    invalid_evaluation_result: Page = submit_evaluation(
+        invalid_evaluation_state,
+        "GPT-4o",
+        "General / Intro Electives",
+        "Explain photosynthesis.",
+        "",
+        "5",
+        "5",
+        True,
+    )
+
+    assert isinstance(invalid_evaluation_result, Page)
+    assert len(invalid_evaluation_state.evaluations) == 0
+
+    # Test the other missing-information case: an empty prompt.
+    invalid_prompt_result: Page = submit_evaluation(
+        invalid_evaluation_state,
+        "GPT-4o",
+        "General / Intro Electives",
+        "",
+        "Photosynthesis converts light energy into chemical energy.",
+        "5",
+        "5",
+        True,
+    )
+
+    assert isinstance(invalid_prompt_result, Page)
+    assert len(invalid_evaluation_state.evaluations) == 0
+
+    # ==========================================================================
+    # ROUTE TEST 8: clear_evaluations
+    # ==========================================================================
+    # Verify that existing evaluation records are removed.
+
+    clear_state: State = create_initial_state()
+
+    # Add a sample evaluation before testing the clear route.
+    sample_record: EvaluationRecord = EvaluationRecord(
+        model_name="GPT-4o",
+        category="General / Intro Electives",
+        prompt_tested="Sample prompt",
+        response_snippet="Sample response",
+        accuracy_score=5,
+        clarity_score=5,
+        fact_checked=True,
+        trust_label="High Trust (Verified)",
+    )
+
+    clear_state.evaluations.append(sample_record)
+
+    assert len(clear_state.evaluations) == 1
+
+    clear_result: Page = clear_evaluations(clear_state)
+
+    assert isinstance(clear_result, Page)
+    assert len(clear_state.evaluations) == 0
+
+
+# Run the self-tests before starting the web application.
+run_self_tests()
+
+
+# ==============================================================================
+# SITE INFORMATION & APPLICATION STARTUP
+# ==============================================================================
 
 # Replace the placeholder strings below with your exact course example values
 set_site_information(
