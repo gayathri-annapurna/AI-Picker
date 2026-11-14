@@ -1222,11 +1222,11 @@ def clear_evaluations(state: State) -> Page:
 
 # Replace the placeholder strings below with your exact course example values
 set_site_information(
-    author="Your Name",
+    author="Gayathri Annapurna",
     description="College AI Model Router & Answer Quality Evaluator",
     sources=["Preset model ratings created for CISC106 final project"],
     planning="planning.pdf",
-    links=["https://github.com/your-username/your-repo"],
+    links=["https://github.com/gayathri-annapurna/AI-Picker"],
 )
 
 start_server(create_initial_state())
